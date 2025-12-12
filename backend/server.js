@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const supabase = require('./supabaseClient');
 
 dotenv.config();
 
@@ -35,29 +36,69 @@ app.post('/api/contact', (req, res) => {
     if (!emailRegex.test(email)) {
       return res.status(400).json({
         success: false,
-        message: 'البريد الإلكتروني غير صحيح',
+        message: 'Invalid email format',
       });
     }
 
-    // In a real application, you would save this to a database
-    // For now, we'll just log it and return success
-    console.log('New contact form submission:', {
-      name,
-      email,
-      phone,
-      message,
-      timestamp: new Date().toISOString(),
-    });
+    // Save to Supabase if available, otherwise log to console
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('contact_messages')
+          .insert([
+            {
+              name,
+              email,
+              phone,
+              message,
+            },
+          ])
+          .select();
+
+        if (error) {
+          console.error('Supabase error:', error);
+          // Fallback to console log if Supabase fails
+          console.log('New contact form submission:', {
+            name,
+            email,
+            phone,
+            message,
+            timestamp: new Date().toISOString(),
+          });
+        } else {
+          console.log('✅ Message saved to Supabase:', data);
+        }
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+        // Fallback to console log
+        console.log('New contact form submission:', {
+          name,
+          email,
+          phone,
+          message,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } else {
+      // Fallback: log to console if Supabase is not configured
+      console.log('New contact form submission:', {
+        name,
+        email,
+        phone,
+        message,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     res.json({
       success: true,
-      message: 'تم إرسال رسالتك بنجاح! سنتواصل معك قريباً.',
+      message: 'Your message has been sent successfully! We will contact you soon.',
     });
-  } catch (error) {
+    } catch (error) {
     console.error('Error processing contact form:', error);
     res.status(500).json({
       success: false,
-      message: 'حدث خطأ أثناء معالجة الطلب',
+      message: 'An error occurred while processing your request',
     });
   }
 });
