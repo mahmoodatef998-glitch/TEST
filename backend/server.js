@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const supabase = require('./supabaseClient');
+const sql = require('./neonClient');
 
 dotenv.config();
 
@@ -40,36 +40,18 @@ app.post('/api/contact', (req, res) => {
       });
     }
 
-    // Save to Supabase if available, otherwise log to console
-    if (supabase) {
+    // Save to Neon database if available, otherwise log to console
+    if (sql) {
       try {
-        const { data, error } = await supabase
-          .from('contact_messages')
-          .insert([
-            {
-              name,
-              email,
-              phone,
-              message,
-            },
-          ])
-          .select();
+        const result = await sql`
+          INSERT INTO contact_messages (name, email, phone, message)
+          VALUES (${name}, ${email}, ${phone}, ${message})
+          RETURNING *
+        `;
 
-        if (error) {
-          console.error('Supabase error:', error);
-          // Fallback to console log if Supabase fails
-          console.log('New contact form submission:', {
-            name,
-            email,
-            phone,
-            message,
-            timestamp: new Date().toISOString(),
-          });
-        } else {
-          console.log('✅ Message saved to Supabase:', data);
-        }
+        console.log('✅ Message saved to Neon database:', result[0]);
       } catch (dbError) {
-        console.error('Database error:', dbError);
+        console.error('Neon database error:', dbError);
         // Fallback to console log
         console.log('New contact form submission:', {
           name,
@@ -80,7 +62,7 @@ app.post('/api/contact', (req, res) => {
         });
       }
     } else {
-      // Fallback: log to console if Supabase is not configured
+      // Fallback: log to console if Neon is not configured
       console.log('New contact form submission:', {
         name,
         email,
