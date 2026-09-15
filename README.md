@@ -1,181 +1,67 @@
-# PERKINS + CUMMINS Generators Website
+# دفتر حسابات الوكالة
 
-موقع ويب احترافي لشركة مولدات PERKINS + CUMMINS مبني باستخدام Next.js للواجهة الأمامية و Node.js للواجهة الخلفية.
+نظام محاسبة وإدارة عملاء/فريق داخلي — Next.js (App Router) + TypeScript + Prisma + شات بوت داخلي متصل بـ Claude لتنفيذ عمليات حقيقية على قاعدة البيانات بالعربي.
 
-## المميزات
+## Stack
 
-- 🎨 تصميم احترافي وحديث
-- 📱 متجاوب مع جميع الأجهزة
-- ⚡ أداء عالي وسريع
-- 🔒 آمن وموثوق
-- 🌐 دعم اللغة العربية (RTL)
+- Next.js 16 (App Router) + TypeScript
+- Tailwind CSS 4 — واجهة RTL كاملة
+- Prisma ORM — SQLite محليًا، وقابل للتحويل لـ Postgres (Neon/Supabase) لأي بيئة إنتاج
+- NextAuth v5 (Credentials) — تسجيل دخول بالبريد وكلمة المرور
+- Anthropic API (Claude, Tool Use) — الشات بوت الداخلي
 
-## التقنيات المستخدمة
-
-### Frontend
-- **Next.js 14** - إطار عمل React
-- **TypeScript** - للبرمجة الآمنة
-- **Tailwind CSS** - للتصميم
-- **React Hooks** - لإدارة الحالة
-
-### Backend
-- **Node.js** - بيئة التشغيل
-- **Express** - إطار عمل الويب
-- **CORS** - للسماح بالطلبات من الواجهة الأمامية
-
-## التثبيت والتشغيل
-
-### 1. تثبيت جميع التبعيات
+## التشغيل محليًا
 
 ```bash
-npm run install:all
-```
-
-أو يمكنك تثبيت كل جزء على حدة:
-
-```bash
-# تثبيت تبعيات المشروع الرئيسي
 npm install
-
-# تثبيت تبعيات الواجهة الأمامية
-cd frontend
-npm install
-
-# تثبيت تبعيات الواجهة الخلفية
-cd ../backend
-npm install
-```
-
-### 2. تشغيل المشروع
-
-#### الطريقة الأسهل - استخدام ملف START:
-
-**على Windows:**
-```bash
-START.bat
-```
-أو انقر نقراً مزدوجاً على ملف `START.bat`
-
-**على Linux/Mac:**
-```bash
-chmod +x START.sh
-./START.sh
-```
-
-**على PowerShell:**
-```powershell
-.\START.ps1
-```
-
-ملف START سيقوم بـ:
-- ✅ تشغيل الواجهة الخلفية تلقائياً
-- ✅ تشغيل الواجهة الأمامية تلقائياً
-- ✅ فتح المتصفح تلقائياً على http://localhost:3000
-
-#### الطريقة البديلة - استخدام npm:
-
-```bash
-npm start
-```
-
-أو تشغيل كل جزء على حدة:
-
-**الواجهة الأمامية (Next.js):**
-```bash
-cd frontend
+cp .env.example .env   # لو مش موجود، راجع القيم المطلوبة تحت
+npm run db:push        # ينشئ SQLite db من الـ schema
+npm run db:seed        # بيانات تجريبية واضحة (اسمها فيه "تجريبي")
 npm run dev
 ```
-سيتم تشغيل الواجهة الأمامية على: http://localhost:3000
 
-**الواجهة الخلفية (Node.js):**
-```bash
-cd backend
-npm run dev
-```
-سيتم تشغيل الواجهة الخلفية على: http://localhost:5000
+يفتح على http://localhost:3000 — هيوجهك لصفحة تسجيل الدخول.
 
-## هيكل المشروع
+بيانات دخول تجريبية بعد الـ seed:
+- `sales@ataswg.com` / `demo1234`
+- `partner2@demo.test` / `demo1234`
+
+## متغيرات البيئة (`.env`)
 
 ```
-.
-├── frontend/              # مشروع Next.js
-│   ├── app/              # صفحات التطبيق
-│   ├── components/        # المكونات القابلة لإعادة الاستخدام
-│   ├── public/           # الملفات الثابتة
-│   └── package.json
-├── backend/              # مشروع Node.js
-│   ├── server.js         # ملف الخادم الرئيسي
-│   └── package.json
-└── package.json          # ملف المشروع الرئيسي
+DATABASE_URL="file:./dev.db"          # أو postgresql://... للإنتاج
+NEXTAUTH_SECRET="..."                  # أي قيمة عشوائية طويلة
+NEXTAUTH_URL="http://localhost:3000"
+ANTHROPIC_API_KEY=""                   # لازم تتضاف عشان الشات بوت يشتغل
+ANTHROPIC_MODEL="claude-sonnet-5"     # اختياري
 ```
 
-## الصفحات والمكونات
+## التحويل لـ Postgres (Neon/Supabase) في الإنتاج
 
-### الصفحات الرئيسية:
-- **الصفحة الرئيسية** (`/`) - تحتوي على جميع الأقسام
-- **Hero Section** - قسم البطل مع شرائح متحركة
-- **Features** - المميزات الرئيسية
-- **Products** - عرض المنتجات (PERKINS & CUMMINS)
-- **About** - معلومات عن الشركة
-- **Services** - الخدمات المقدمة
-- **Contact** - نموذج الاتصال
+1. غيّر `provider` في `prisma/schema.prisma` من `sqlite` إلى `postgresql`.
+2. حط رابط الاتصال في `DATABASE_URL` على Vercel.
+3. `npx prisma db push` (أو migrate) على قاعدة البيانات الجديدة.
 
-### المكونات:
-- `Navbar` - شريط التنقل الاحترافي
-- `Footer` - تذييل الصفحة
-- `Hero` - قسم البطل مع الشرائح
-- `Features` - عرض المميزات
-- `Products` - عرض المنتجات
-- `About` - قسم من نحن
-- `Services` - عرض الخدمات
-- `Contact` - نموذج الاتصال
+لا تغييرات تانية مطلوبة في الكود — كل القيم اللي كانت enums اتعملها كـ strings متحقق منها في الكود (`zod`) عشان تفضل متوافقة مع SQLite و Postgres من غير تعديل.
 
-## API Endpoints
+## البنية
 
-### الواجهة الخلفية توفر:
-
-- `GET /api/health` - التحقق من حالة الخادم
-- `POST /api/contact` - إرسال نموذج الاتصال
-- `GET /api/products` - الحصول على قائمة المنتجات
-- `GET /api/services` - الحصول على قائمة الخدمات
-
-## التخصيص
-
-### تغيير البيانات:
-
-جميع البيانات الحالية هي بيانات وهمية ويمكنك تعديلها بسهولة:
-
-1. **المنتجات**: عدّل في `frontend/components/Products.tsx` أو `backend/server.js`
-2. **معلومات الشركة**: عدّل في `frontend/components/About.tsx`
-3. **معلومات الاتصال**: عدّل في `frontend/components/Contact.tsx` و `frontend/components/Footer.tsx`
-4. **الخدمات**: عدّل في `frontend/components/Services.tsx` أو `backend/server.js`
-
-### تغيير الألوان:
-
-عدّل ملف `frontend/tailwind.config.js` لتغيير الألوان الرئيسية.
-
-## الإنتاج
-
-### بناء الواجهة الأمامية:
-
-```bash
-cd frontend
-npm run build
-npm start
+```
+app/
+  (app)/          صفحات النظام (تتطلب تسجيل دخول) — dashboard, clients, team, payroll...
+  login/          صفحة تسجيل الدخول
+  api/chat/       الشات بوت (Anthropic tool use)
+  api/auth/       NextAuth
+lib/
+  actions/        Server Actions لكل عملية CRUD
+  chat/           تعريف أدوات الشات بوت + تنفيذها الفعلي على قاعدة البيانات
+  calculations.ts منطق الأرباح وتوزيع الشركاء وأولوية التنبيهات (server-only)
+  queries.ts      قراءات مجمّعة تستخدمها الصفحات
+prisma/
+  schema.prisma
+  seed.ts
 ```
 
-### تشغيل الواجهة الخلفية:
+## الشات بوت
 
-```bash
-cd backend
-npm start
-```
-
-## الدعم
-
-لأي استفسارات أو مشاكل، يرجى التواصل معنا.
-
-## الترخيص
-
-هذا المشروع مخصص للاستخدام الخاص.
-
+كل أمر بيتبعت لـ `/api/chat`، Claude بيقرر يستخدم أي أداة (tool) من `lib/chat/tools.ts`، والتنفيذ الفعلي بيحصل في `lib/chat/executor.ts` مباشرة على قاعدة البيانات عن طريق Prisma. كل أمر بيتسجل في جدول `ChatCommandLog` للمراجعة، وظاهر في تاب "السجل" جوه الشات بوت نفسه.
