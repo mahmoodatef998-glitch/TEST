@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // SQLite for local/dev. Switch provider to "postgresql" and point
+  // DATABASE_URL at Neon/Supabase for production — no model changes needed.
+  // (Enums are modeled as validated strings below since SQLite has no
+  // native enum type; this keeps the schema portable across both.)
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("STAFF") // "ADMIN" | "STAFF"
+  partnerId    String?  @unique
+  partner      Partner? @relation(fields: [partnerId], references: [id])
+  createdAt    DateTime @default(now())
+  chatLogs     ChatCommandLog[]
+}
+
+// ---------------------------------------------------------------------------
+// Partners
+// ---------------------------------------------------------------------------
+
+model Partner {
+  id              String        @id @default(cuid())
+  name            String
+  sharePercentage Float         @default(50)
+  user            User?
+  draws           PartnerDraw[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Clients
+// ---------------------------------------------------------------------------
+
+model Client {
+  id             String   @id @default(cuid())
+  name           String
+  companyName    String?
+  monthlyRevenue Float
+  billingType    String   @default("monthly_recurring") // "monthly_recurring" | "fixed_term"
+  contractMonths Int?
+  startDate      DateTime
+  paymentTiming  String? // free text: "مقدم بالكامل" | "دفعات" | "نص مقدم"...
+  status         String   @default("active") // "active" | "paused" | "ended"
+
+  costLines      ClientCostLine[]
+  payrollEntries PayrollEntry[]
+  collections    CollectionEntry[]
+  reminders      Reminder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Team
+// ---------------------------------------------------------------------------
+
+model TeamMember {
+  id             String           @id @default(cuid())
+  name           String
+  phone          String?
+  notes          String?
+  costLines      ClientCostLine[]
+  payrollEntries PayrollEntry[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model ClientCostLine {
+  id           String @id @default(cuid())
+  clientId     String
+  client       Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  teamMemberId String
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id])
+  role         String
+  amount       Float
+  isConfirmed  Boolean @default(true)
+  note         String?
+  payoutCondition String @default("fixed_monthly") // "fixed_monthly" | "after_client_collection"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([teamMemberId])
+}
+
+// ---------------------------------------------------------------------------
+// Payroll
+// ---------------------------------------------------------------------------
+
+model PayrollEntry {
+  id           String     @id @default(cuid())
+  teamMemberId String
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id])
+  clientId     String?
+  client       Client?    @relation(fields: [clientId], references: [id])
+  amount       Float
+  dueDate      DateTime
+  status       String     @default("pending") // "pending" | "paid"
+  paidDate     DateTime?
+  note         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teamMemberId])
+  @@index([clientId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Payables (general debts, not tied to normal payroll cycle)
+// ---------------------------------------------------------------------------
+
+model Payable {
+  id                    String   @id @default(cuid())
+  who                   String
+  reason                String
+  amount                Float
+  status                String // free text describing when it'll be paid
+  relatedPayrollEntryId String?
+  isSettled             Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Collections
+// ---------------------------------------------------------------------------
+
+model CollectionEntry {
+  id       String   @id @default(cuid())
+  clientId String
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  amount   Float
+  dueDate  DateTime
+  status   String   @default("pending") // "pending" | "paid"
+  paidDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Partner draws
+// ---------------------------------------------------------------------------
+
+model PartnerDraw {
+  id        String   @id @default(cuid())
+  partnerId String
+  partner   Partner  @relation(fields: [partnerId], references: [id])
+  amount    Float
+  date      DateTime
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([partnerId])
+}
+
+// ---------------------------------------------------------------------------
+// Reminders
+// ---------------------------------------------------------------------------
+
+model Reminder {
+  id              String   @id @default(cuid())
+  date            DateTime
+  title           String
+  type            String   @default("other") // "payroll" | "collection" | "other"
+  isDone          Boolean  @default(false)
+  relatedClientId String?
+  relatedClient   Client?  @relation(fields: [relatedClientId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([relatedClientId])
+  @@index([isDone])
+}
+
+// ---------------------------------------------------------------------------
+// Payroll schedule (editable rule, not hardcoded)
+// ---------------------------------------------------------------------------
+
+model PayrollSchedule {
+  id          String   @id @default(cuid())
+  dayOfMonth  Int      @default(10)
+  appliesFrom DateTime @default(now())
+  note        String?
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Chat bot audit log
+// ---------------------------------------------------------------------------
+
+model ChatCommandLog {
+  id            String   @id @default(cuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+  commandText   String
+  resultSummary String
+  opsApplied    String // JSON-encoded array of {tool, args, result}
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+}
