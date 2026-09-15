@@ -3,11 +3,10 @@ generator client {
 }
 
 datasource db {
-  // SQLite for local/dev. Switch provider to "postgresql" and point
-  // DATABASE_URL at Neon/Supabase for production — no model changes needed.
-  // (Enums are modeled as validated strings below since SQLite has no
-  // native enum type; this keeps the schema portable across both.)
-  provider = "sqlite"
+  // Postgres (Neon). Enums are modeled as validated strings (see zod schemas
+  // in lib/actions) rather than native Postgres enums, purely so this file
+  // stays portable if you ever move providers again — not required here.
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
